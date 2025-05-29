@@ -27,6 +27,7 @@ import (
 	"github.com/nicocha30/ligolo-ng/web"
 	"github.com/sirupsen/logrus"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -235,7 +236,28 @@ func StartLigoloApi() {
 				c.JSON(http.StatusInternalServerError, inputError)
 				return
 			}
-			for _, route := range routeInfo.Route {
+
+			processedRoutesForConfig := make([]string, 0)
+			if len(routeInfo.Route) == 1 {
+				inputCIDR := routeInfo.Route[0]
+				ip, ipNet, err := net.ParseCIDR(inputCIDR)
+				if err == nil { // Valid CIDR
+					if !ip.Mask(ipNet.Mask).Equal(ip) { // It's a host IP within the network
+						networkAddress := ipNet.IP.Mask(ipNet.Mask)
+						maskSize, _ := ipNet.Mask.Size()
+						networkCIDRStr := fmt.Sprintf("%s/%d", networkAddress.String(), maskSize)
+						processedRoutesForConfig = append(processedRoutesForConfig, networkCIDRStr)
+					} else { // It's already a network address
+						processedRoutesForConfig = append(processedRoutesForConfig, inputCIDR)
+					}
+				} else { // Invalid CIDR string
+					processedRoutesForConfig = append(processedRoutesForConfig, inputCIDR) // Add as is, let AddRouteConfig handle validation
+				}
+			} else { // Multiple routes or empty list
+				processedRoutesForConfig = routeInfo.Route
+			}
+
+			for _, route := range processedRoutesForConfig {
 				if err := config.AddRouteConfig(routeInfo.Interface, route); err != nil {
 					c.Error(err)
 					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -250,17 +272,28 @@ func StartLigoloApi() {
 					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 					return
 				}
-				for _, route := range routeInfo.Route {
+
+				// Sanitize routes before applying them live
+				// Use original routeInfo.Route for sanitization to reflect the user's full request for the live change
+				sanitizedLiveRoutes, err := config.SanitizeRoutes(routeInfo.Route)
+				if err != nil {
+					c.Error(err)
+					c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to sanitize routes for live update: %s", err.Error())})
+					return
+				}
+
+				for _, route := range sanitizedLiveRoutes {
 					if err := stun.AddRoute(route); err != nil {
 						c.Error(err)
-						c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+						// Attempt to rollback or log? For now, just return error.
+						c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to add live route %s: %s", route, err.Error())})
 						return
 					}
 				}
-				c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Routes %s added.", routeInfo.Route)})
+				c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Routes %s added (live and to config).", sanitizedLiveRoutes)})
 				return
 			}
-			c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Routes %s will be created on tunnel start.", routeInfo.Route)})
+			c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Routes %s will be created on tunnel start (added to config).", processedRoutesForConfig)})
 			return
 		})
 

@@ -155,17 +155,28 @@ func StartTunnel(agent *controller.LigoloAgent, tunName string) error {
 	}
 
 	if ifaceConfig, ok := configState[tunName]; ok {
+		pendingRouteStrings := make([]string, 0)
 		for _, ifcfg := range ifaceConfig.Routes {
 			if !ifcfg.Active {
-				logrus.Debugf("Creating route %s on interface %s", tunName, ifcfg.Destination)
-				tun, err := netinfo.GetTunByName(tunName)
-				if err != nil {
-					logrus.Error(err)
-					return err
-				}
-				if err := tun.AddRoute(ifcfg.Destination); err != nil {
-					return err
-				}
+				pendingRouteStrings = append(pendingRouteStrings, ifcfg.Destination)
+			}
+		}
+
+		sanitizedRouteStrings, err := config.SanitizeRoutes(pendingRouteStrings)
+		if err != nil {
+			logrus.Errorf("Failed to sanitize routes for interface %s: %v", tunName, err)
+			return fmt.Errorf("failed to sanitize routes for interface %s: %w", tunName, err)
+		}
+
+		for _, sanitizedRouteString := range sanitizedRouteStrings {
+			logrus.Debugf("Creating sanitized route %s on interface %s", tunName, sanitizedRouteString)
+			tun, err := netinfo.GetTunByName(tunName)
+			if err != nil {
+				logrus.Error(err)
+				return err
+			}
+			if err := tun.AddRoute(sanitizedRouteString); err != nil {
+				return err
 			}
 		}
 	}
