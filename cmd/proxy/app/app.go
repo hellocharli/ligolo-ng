@@ -27,6 +27,7 @@ import (
 	"github.com/nicocha30/ligolo-ng/cmd/proxy/config"
 	"github.com/nicocha30/ligolo-ng/pkg/proxy/netinfo"
 	"net"
+	"os" // Added os package
 	"runtime"
 	"strconv"
 	"strings"
@@ -172,11 +173,16 @@ func StartTunnel(agent *controller.LigoloAgent, tunName string) error {
 			logrus.Debugf("Creating sanitized route %s on interface %s", tunName, sanitizedRouteString)
 			tun, err := netinfo.GetTunByName(tunName)
 			if err != nil {
-				logrus.Error(err)
-				return err
+				logrus.Errorf("Failed to get TUN device %s: %v", tunName, err)
+				return fmt.Errorf("failed to get TUN device %s: %w", tunName, err)
 			}
 			if err := tun.AddRoute(sanitizedRouteString); err != nil {
-				return err
+				if errors.Is(err, os.ErrExist) {
+					logrus.Debugf("Route %s for interface %s already exists, proceeding.", sanitizedRouteString, tunName)
+				} else {
+					logrus.Errorf("Failed to add route %s for interface %s: %v", sanitizedRouteString, tunName, err)
+					return fmt.Errorf("failed to add route %s for interface %s: %w", sanitizedRouteString, tunName, err)
+				}
 			}
 		}
 	}
