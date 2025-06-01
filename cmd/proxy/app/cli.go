@@ -55,7 +55,7 @@ var sshKeyCmd = &grumble.Command{
 	LongHelp: "Manages SSH authorized public keys for agent SSH access. Allows adding, deleting, and listing keys that agents will use to authorize SSH connections.",
 	// Aliases:  []string{"sk"}, // Example if you want aliases
 	Flags: func(f *grumble.Flags) {
-		f.Bool("kxflag", false, "Internal diagnostic flag for sshkey") // Dummy flag
+		f.Bool("kxflag", "", false, "Internal diagnostic flag for sshkey") // Dummy flag
 	},
 }
 
@@ -154,7 +154,7 @@ var sshPortCmd = &grumble.Command{
 		a.Int("port", "The SSH port number (1-65535)")
 	},
 	Flags: func(f *grumble.Flags) {
-		f.Bool("pxflag", false, "Internal diagnostic flag for sshport") // Dummy flag
+		f.Bool("pxflag", "", false, "Internal diagnostic flag for sshport") // Dummy flag
 	},
 	Run: func(c *grumble.Context) error {
 		// Check for dummy flag - optional logic for this diagnostic
