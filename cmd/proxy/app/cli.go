@@ -51,8 +51,10 @@ func ask(question string) bool {
 // SSH Key Management
 var sshKeyCmd = &grumble.Command{
 	Name:     "sshkey",
-	Help:     "manage ssh authorized public keys",
-	LongHelp: "Allows you to add, delete, and list SSH authorized public keys for the proxy.",
+	Help:     "manage ssh authorized public keys for agent SSH access",
+	LongHelp: "Manages SSH authorized public keys for agent SSH access. Allows adding, deleting, and listing keys that agents will use to authorize SSH connections.",
+	HelpFlag: false, // Disable automatic help flag
+	// Aliases:  []string{"sk"}, // Example if you want aliases
 }
 
 var sshKeyAddCmd = &grumble.Command{
@@ -144,7 +146,9 @@ var sshKeyListCmd = &grumble.Command{
 // SSH Port Management
 var sshPortCmd = &grumble.Command{
 	Name: "sshport",
-	Help: "manage the ssh port",
+	Help: "manage the ssh port for agents",
+	LongHelp: "Sets the SSH port that agents will use for the built-in SSH server. This port will be communicated to agents when they connect.",
+	HelpFlag: false, // Disable automatic help flag
 	Args: func(a *grumble.Args) {
 		a.Int("port", "The SSH port number (1-65535)")
 	},
