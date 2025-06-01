@@ -53,8 +53,10 @@ var sshKeyCmd = &grumble.Command{
 	Name:     "sshkey",
 	Help:     "manage ssh authorized public keys for agent SSH access",
 	LongHelp: "Manages SSH authorized public keys for agent SSH access. Allows adding, deleting, and listing keys that agents will use to authorize SSH connections.",
-	HelpFlag: false, // Disable automatic help flag
 	// Aliases:  []string{"sk"}, // Example if you want aliases
+	Flags: func(f *grumble.Flags) {
+		f.Bool("kxflag", false, "Internal diagnostic flag for sshkey") // Dummy flag
+	},
 }
 
 var sshKeyAddCmd = &grumble.Command{
@@ -148,11 +150,20 @@ var sshPortCmd = &grumble.Command{
 	Name: "sshport",
 	Help: "manage the ssh port for agents",
 	LongHelp: "Sets the SSH port that agents will use for the built-in SSH server. This port will be communicated to agents when they connect.",
-	HelpFlag: false, // Disable automatic help flag
 	Args: func(a *grumble.Args) {
 		a.Int("port", "The SSH port number (1-65535)")
 	},
+	Flags: func(f *grumble.Flags) {
+		f.Bool("pxflag", false, "Internal diagnostic flag for sshport") // Dummy flag
+	},
 	Run: func(c *grumble.Context) error {
+		// Check for dummy flag - optional logic for this diagnostic
+		if c.Flags.Bool("pxflag") {
+			// logrus.Debug("pxflag for sshPortCmd parsed") // Example of logging
+			// For this diagnostic, we don't need to do anything specific here.
+			// The main goal is that flag registration doesn't panic.
+		}
+
 		port := c.Args.Int("port")
 		if port < 1 || port > 65535 {
 			c.App.PrintError(fmt.Errorf("invalid port number. Must be between 1 and 65535"))
