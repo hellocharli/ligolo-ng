@@ -31,6 +31,7 @@ import (
 
 	"github.com/nicocha30/ligolo-ng/pkg/agent/neterror"
 	"github.com/nicocha30/ligolo-ng/pkg/agent/smartping"
+	"github.com/nicocha30/ligolo-ng/pkg/agent/ssh" // Added SSH package
 	"github.com/nicocha30/ligolo-ng/pkg/protocol"
 	"github.com/nicocha30/ligolo-ng/pkg/relay"
 	"github.com/sirupsen/logrus"
@@ -350,6 +351,39 @@ func HandleConn(conn net.Conn) {
 
 	case *protocol.AgentKillRequestPacket:
 		os.Exit(0)
+
+	case *protocol.SSHConfigRequestPacket:
+		sshReq := e.Payload.(*protocol.SSHConfigRequestPacket)
+		logrus.Infof("Received SSH Config Request: Port %d, Keys: %d", sshReq.SSHPort, len(sshReq.SSHPublicKeys))
+
+		// Attempt to start the SSH server. This will only run the core logic once
+		// per server lifecycle (as defined by sync.Once in the ssh package).
+		// If it's already running and StartSSHServer is called again after a reset of sync.Once,
+		// it might attempt to start a new one if the old one fully stopped.
+		go func() {
+			logrus.Debugf("Attempting to start SSH server on port %d with %d keys in a goroutine.", sshReq.SSHPort, len(sshReq.SSHPublicKeys))
+			// StartSSHServer is blocking and handles its own accept loop.
+			// It uses sync.Once internally to prevent multiple concurrent listeners.
+			err := ssh.StartSSHServer(sshReq.SSHPort, sshReq.SSHPublicKeys)
+			if err != nil {
+				// This error typically means the sshServerStarted.Do block encountered an issue
+				// on its first execution attempt (e.g., port binding failure, no valid keys).
+				logrus.Errorf("Failed to initialize SSH server: %v", err)
+				// Note: The response packet is sent before this goroutine might return an error.
+				// A more complex setup would be needed to send a delayed error response.
+			} else {
+				logrus.Infof("SSH.StartSSHServer goroutine completed. If server was started, it's running or has finished.")
+			}
+		}()
+
+		// Send response immediately, indicating the request was received and is being processed.
+		// The actual success/failure of the server starting is handled by the goroutine and logged.
+		sshResp := protocol.SSHConfigResponsePacket{Success: true, Error: ""}
+		encoder := protocol.NewEncoder(conn)
+		if err := encoder.Encode(sshResp); err != nil {
+			logrus.Errorf("Failed to send SSHConfigResponsePacket: %v", err)
+		}
+		logrus.Debug("Sent SSHConfigResponsePacket (Success: true) to proxy.")
 
 	}
 }

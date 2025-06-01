@@ -63,6 +63,72 @@ tunnels from a reverse TCP/TLS connection using a **tun interface** (without the
 - Reverse/Bind Connection
 - Automatic tunnel/listeners recovery (in case of network issues)
 - Websocket support
+- Direct SSH access to the agent machine (details below)
+
+## Agent SSH Access
+
+This feature allows you to establish an SSH connection directly to the machine running the `ligolo-ng` agent. The SSH server runs on the agent machine, and the connection is tunneled through Ligolo-ng.
+
+**Overview:**
+*   Provides SSH access to the agent machine.
+*   The SSH session runs with the privileges of the user executing the `ligolo-ng` agent process on the target machine.
+
+**Configuration (Proxy Side):**
+
+To enable and configure SSH access to agents, you need to add the following options to your proxy's configuration file (default: `ligolo-ng.yaml`):
+
+```yaml
+ssh:
+  # Port on the agent for the SSH server to listen on.
+  # Default: 2222
+  port: 2222
+  # A list of public key strings (in authorized_keys format) that are authorized to connect.
+  # Example:
+  # publickeys:
+  #   - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGCiszAUP313P5yDUtfLMV6fRUXT7fLErv9axjCF/9ms user@example"
+  #   - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCySp..."
+  publickeys: []
+```
+
+**CLI Commands (Proxy Side):**
+
+Manage SSH settings for agents using these commands in the `ligolo-ng` proxy's command-line interface:
+
+*   `sshport <port>`: Sets or changes the listening port for the SSH server on the agents.
+    *   Example: `sshport 2223`
+*   `sshkey list`: Lists the currently configured authorized SSH public keys.
+*   `sshkey add "<key_string>"`: Adds a new SSH public key to the authorized list.
+    *   Example: `sshkey add "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGCiszAUP313P5yDUtfLMV6fRUXT7fLErv9axjCF/9ms user@machine"`
+    *   **Note:** Ensure the public key string is enclosed in quotes.
+*   `sshkey del`: Interactively prompts to delete an SSH public key from the authorized list.
+
+**Usage:**
+
+Once the proxy is configured with SSH settings and an agent connects, the agent will attempt to start an SSH server based on the provided configuration.
+
+To connect:
+
+1.  **Identify Agent User:** The SSH username will be the user running the `ligolo-ng` agent process on the target machine.
+2.  **Accessing the Port:**
+    *   **Local Port Forwarding:** If you have set up a listener in Ligolo-ng to forward a local port on your proxy machine to the agent's SSH port (e.g., local `localhost:22220` forwards to agent's `0.0.0.0:<ssh.port>`):
+        ```bash
+        ssh <agent_username>@localhost -p 22220 -i /path/to/your/private_key
+        ```
+    *   **Direct Routing:** If your proxy machine (via its TUN interface) can directly route to the agent's IP address on its network:
+        ```bash
+        ssh <agent_username>@<agent_ip_on_its_network> -p <ssh.port> -i /path/to/your/private_key
+        ```
+        (Replace `<ssh.port>` with the value from your `ligolo-ng.yaml`, e.g., 2222).
+
+**Security Considerations:**
+
+*   **Key Management:** Always use strong, unique SSH key pairs. Protect your private key meticulously. Do not share private keys.
+*   **User Privileges: CRITICAL WARNING**
+    *   The SSH session on the agent machine will operate with the **same user privileges as the `ligolo-ng` agent process itself.**
+    *   If the agent is running as `root` or an administrator on the target machine, SSH access via this feature will also grant `root` or administrator-level access. Exercise extreme caution.
+*   **Port Exposure:** Be mindful of how the agent's SSH port is exposed. Even though tunneled, consider if direct SSH access to the agent machine is appropriate for its network environment.
+*   **Firewall:** If the agent machine has a local firewall, ensure it permits incoming connections on the configured `ssh.port` from the necessary sources (typically from its local loopback interface for the tunnel endpoint, or specific IPs if not tunneled via Ligolo's listener).
+*   **Public Keys Only:** This feature uses public key authentication exclusively. Password authentication is not supported.
 
 ## Demo
 

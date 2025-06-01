@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"io"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestEncodeDecode(t *testing.T) {
@@ -47,6 +49,74 @@ func TestEncodeDecode(t *testing.T) {
 		t.Fatal("invalid packet decoded")
 	}
 
+}
+
+func TestSSHConfigRequestPacket_EncodeDecode(t *testing.T) {
+	originalPacket := &SSHConfigRequestPacket{
+		SSHPort:       2222,
+		SSHPublicKeys: []string{"ssh-rsa KEY1", "ssh-ed25519 KEY2"},
+	}
+
+	var network bytes.Buffer
+	encoder := NewEncoder(&network)
+	err := encoder.Encode(originalPacket)
+	assert.NoError(t, err, "Encoding SSHConfigRequestPacket failed")
+
+	decoder := NewDecoder(&network)
+	err = decoder.Decode()
+	assert.NoError(t, err, "Decoding SSHConfigRequestPacket failed")
+
+	decodedPacket, ok := decoder.Payload.(*SSHConfigRequestPacket)
+	assert.True(t, ok, "Decoded payload is not of type SSHConfigRequestPacket")
+
+	assert.Equal(t, originalPacket.SSHPort, decodedPacket.SSHPort, "SSHPort mismatch")
+	assert.Equal(t, originalPacket.SSHPublicKeys, decodedPacket.SSHPublicKeys, "SSHPublicKeys mismatch")
+}
+
+func TestSSHConfigResponsePacket_EncodeDecode(t *testing.T) {
+	t.Run("SuccessCase", func(t *testing.T) {
+		originalPacket := &SSHConfigResponsePacket{
+			Success: true,
+			Error:   "",
+		}
+
+		var network bytes.Buffer
+		encoder := NewEncoder(&network)
+		err := encoder.Encode(originalPacket)
+		assert.NoError(t, err, "Encoding SSHConfigResponsePacket (success) failed")
+
+		decoder := NewDecoder(&network)
+		err = decoder.Decode()
+		assert.NoError(t, err, "Decoding SSHConfigResponsePacket (success) failed")
+
+		decodedPacket, ok := decoder.Payload.(*SSHConfigResponsePacket)
+		assert.True(t, ok, "Decoded payload is not of type SSHConfigResponsePacket")
+
+		assert.Equal(t, originalPacket.Success, decodedPacket.Success, "Success field mismatch")
+		assert.Equal(t, originalPacket.Error, decodedPacket.Error, "Error field mismatch")
+	})
+
+	t.Run("FailureCase", func(t *testing.T) {
+		originalPacket := &SSHConfigResponsePacket{
+			Success: false,
+			Error:   "Failed to start SSH server due to port conflict",
+		}
+
+		var network bytes.Buffer
+		encoder := NewEncoder(&network)
+		err := encoder.Encode(originalPacket)
+		assert.NoError(t, err, "Encoding SSHConfigResponsePacket (failure) failed")
+
+		decoder := NewDecoder(&network)
+		err = decoder.Decode()
+		assert.NoError(t, err, "Decoding SSHConfigResponsePacket (failure) failed")
+
+		decodedPacket, ok := decoder.Payload.(*SSHConfigResponsePacket)
+		assert.True(t, ok, "Decoded payload is not of type SSHConfigResponsePacket")
+
+		assert.Equal(t, originalPacket.Success, decodedPacket.Success, "Success field mismatch")
+		assert.Equal(t, originalPacket.Error, decodedPacket.Error, "Error field mismatch")
+	})
 }
 
 func BenchmarkEncodeDecode(b *testing.B) {

@@ -44,6 +44,8 @@ const (
 	MessageListenerCloseResponse
 	MessageAgentKillRequest
 	MessageListenerSocketConnectionReady
+	MessageSSHConfigRequest
+	MessageSSHConfigResponse
 )
 
 const (
@@ -202,3 +204,15 @@ type HostPingResponsePacket struct {
 
 // AgentKillRequestPacket is sent by the proxy to terminate an agent
 type AgentKillRequestPacket struct{}
+
+// SSHConfigRequestPacket is sent from the proxy to the agent to configure SSH settings.
+type SSHConfigRequestPacket struct {
+	SSHPort       int
+	SSHPublicKeys []string
+}
+
+// SSHConfigResponsePacket is sent from the agent to the proxy in response to SSHConfigRequestPacket.
+type SSHConfigResponsePacket struct {
+	Success bool
+	Error   string
+}

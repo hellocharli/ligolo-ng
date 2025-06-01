@@ -231,6 +231,11 @@ func InitConfig(configFile string) {
 	Config.SetDefault("web.tls.keyfile", "")
 	Config.SetDefault("web.tls.alloweddomains", []string{})
 	Config.SetDefault("web.tls.selfcertdomain", "ligolo")
+
+	// SSH settings
+	Config.SetDefault("ssh.port", 2222)
+	Config.SetDefault("ssh.publickeys", []string{})
+
 	secureConfigPasswords()
 
 	secret, err := generateRandomBytes(32)
