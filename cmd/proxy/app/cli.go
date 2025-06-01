@@ -150,16 +150,11 @@ var sshPortCmd = &grumble.Command{
 	Args: func(a *grumble.Args) {
 		a.Int("port", "The SSH port number (1-65535)")
 	},
-	Flags: func(f *grumble.Flags) {
-		f.BoolL("pxflag", 0, false, "Internal diagnostic flag for sshport") // Changed to BoolL with 0 rune
-	},
 	Run: func(c *grumble.Context) error {
 		// Check for dummy flag - optional logic for this diagnostic
-		if c.Flags.Bool("pxflag") {
-			// logrus.Debug("pxflag for sshPortCmd parsed") // Example of logging
-			// For this diagnostic, we don't need to do anything specific here.
-			// The main goal is that flag registration doesn't panic.
-		}
+		// if c.Flags.Bool("pxflag") { // This flag is now removed
+			// logrus.Debug("pxflag for sshPortCmd parsed")
+		// }
 
 		port := c.Args.Int("port")
 		if port < 1 || port > 65535 {
