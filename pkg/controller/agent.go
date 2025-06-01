@@ -138,12 +138,12 @@ func NewAgent(session *yamux.Session) (*LigoloAgent, error) {
 	protocolEncoder := protocol.NewEncoder(yamuxConnectionSession)
 	protocolDecoder := protocol.NewDecoder(yamuxConnectionSession)
 
-	logrus.Debugf("Sending InfoRequestPacket to new agent on stream %d", yamuxConnectionSession.StreamID())
+	logrus.Debug("Sending InfoRequestPacket to new agent on agent configuration stream")
 	if err := protocolEncoder.Encode(infoRequest); err != nil {
 		return nil, fmt.Errorf("failed to send InfoRequestPacket: %w", err)
 	}
 
-	logrus.Debugf("Waiting for InfoReplyPacket from new agent on stream %d", yamuxConnectionSession.StreamID())
+	logrus.Debug("Waiting for InfoReplyPacket from new agent on agent configuration stream")
 	if err := protocolDecoder.Decode(); err != nil {
 		return nil, fmt.Errorf("failed to decode InfoReplyPacket: %w", err)
 	}
@@ -163,7 +163,7 @@ func NewAgent(session *yamux.Session) (*LigoloAgent, error) {
 	} else if len(sshPublicKeys) == 0 {
 		logrus.Infof("SSH configuration skipped for agent %s: No SSH public keys configured.", reply.Name)
 	} else {
-		logrus.Debugf("Sending SSHConfigRequestPacket to agent %s (Port: %d, Keys: %d) on stream %d", reply.Name, sshPort, len(sshPublicKeys), yamuxConnectionSession.StreamID())
+		logrus.Debugf("Sending SSHConfigRequestPacket to agent %s (Port: %d, Keys: %d) on agent configuration stream", reply.Name, sshPort, len(sshPublicKeys))
 		sshConfigPacket := protocol.SSHConfigRequestPacket{
 			SSHPort:       sshPort,
 			SSHPublicKeys: sshPublicKeys,
@@ -173,7 +173,7 @@ func NewAgent(session *yamux.Session) (*LigoloAgent, error) {
 			// Log error but proceed to create agent object. SSH functionality might be impaired.
 			logrus.Errorf("Failed to send SSHConfigRequestPacket to agent %s: %v", reply.Name, err)
 		} else {
-			logrus.Debugf("Waiting for SSHConfigResponsePacket from agent %s on stream %d", reply.Name, yamuxConnectionSession.StreamID())
+			logrus.Debugf("Waiting for SSHConfigResponsePacket from agent %s on agent configuration stream", reply.Name)
 			// Important: Decode expects to read from the stream.
 			if err := protocolDecoder.Decode(); err != nil {
 				logrus.Errorf("Failed to decode SSHConfigResponsePacket from agent %s: %v", reply.Name, err)
