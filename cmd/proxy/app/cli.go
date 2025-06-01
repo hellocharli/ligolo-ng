@@ -54,9 +54,6 @@ var sshKeyCmd = &grumble.Command{
 	Help:     "manage ssh authorized public keys for agent SSH access",
 	LongHelp: "Manages SSH authorized public keys for agent SSH access. Allows adding, deleting, and listing keys that agents will use to authorize SSH connections.",
 	// Aliases:  []string{"sk"}, // Example if you want aliases
-	Flags: func(f *grumble.Flags) {
-		f.Bool("kxflag", "", false, "Internal diagnostic flag for sshkey") // Dummy flag
-	},
 }
 
 var sshKeyAddCmd = &grumble.Command{
